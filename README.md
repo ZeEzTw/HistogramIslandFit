@@ -37,4 +37,5 @@ Output Files
  
 2. Load and execute the code using:
 
-       .L findBiggestBinContent.C
+       .L findBiggestBinContent.cpp
+       

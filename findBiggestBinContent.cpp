@@ -183,20 +183,19 @@
                 double slopeError = f1->GetParError(0);     // Slope error
                 double interceptError = f1->GetParError(1); // Intercept error
 
-                // Store fit parameters
                 for (int k = 0; k < nE; ++k)
                 {
                     fpar0[i][j][k] = intercept;
                     fpar1[i][j][k] = slope;
                     fparerr0[i][j][k] = interceptError;
-                    fparerr1[i][j][k] = S;
+                    fparerr1[i][j][k] = slopeError;
                 }
 
                 double delta_ij = 0;
                 for (int k = 0; k < nE; k++) {
                     delta_ij += (fpar0[i][j][k]/Eg[k] + fpar1[i][j][k]); // First formula
                 }
-                delta_ij = delta_ij/nE - 1.0; // Average and subtract 1.0 at the end
+                delta_ij = delta_ij/nE - 1.0;
 
                 resultFile<<delta_ij << "\n";
                 
