@@ -26,20 +26,32 @@
 
     for (int i = 0; i < ndet; i++)
     {
-        resultFile <<1.0 << "\n";
-
         for (int j = i + 1; j < ndet; j++)
         {
-            TFile *fEE = new TFile(Form("data/hEE_%i_%i.root", i, j));
-            if (!fEE || fEE->IsZombie())
+            TString filename = Form("data/hEE_%i_%i.root", i, j);
+            if (gSystem->AccessPathName(filename))
             {
-                delete fEE;
+                cout << "File " << filename << " does not exist, skipping..." << endl;
                 continue;
             }
-            TH2D *hEE;
-            fEE->GetObject(Form("hEE%i %i", i, j), hEE);
-            if (!hEE)
+
+            TFile *fEE = TFile::Open(filename);
+            if (!fEE || fEE->IsZombie())
             {
+                cout << "Error opening file " << filename << endl;
+                if (fEE)
+                    delete fEE;
+                continue;
+            }
+
+            TH2D *hEE = nullptr;
+            fEE->GetObject(Form("hEE%i %i", i, j), hEE);
+            cout<<"readed file with name: "<<Form("hEE%i %i", i, j)<<endl;
+            cout << "Processing file number: " << i << " " << j << endl;
+
+            if (!hEE || hEE->GetEntries() == 0)
+            {
+                cout << "Histogram is empty or invalid in file " << filename << endl;
                 delete fEE;
                 continue;
             }
@@ -50,9 +62,19 @@
 
             auto key1 = std::make_pair(i + 1, j + 1);
             auto key2 = std::make_pair(j + 1, i + 1);
-
+            if (errorMap.find(key1) == errorMap.end())
+            {
+                errorMap[key1] = 0;
+            }
+            if (errorMap.find(key2) == errorMap.end())
+            {
+                errorMap[key2] = 0;
+            }
+            cout<<"key1: ("<<key1.first<<", "<<key1.second<<") ("<<key2.first<<", "<<key2.second<<") Available keys: "<<(errorMap.find(key1) != errorMap.end())<<", "<<(errorMap.find(key2) != errorMap.end())<<endl;
             if (errorMap.find(key1) != errorMap.end() && errorMap.find(key2) != errorMap.end())
             {
+                cout<<"key1: "<<key1.first<<" "<<key1.second<<endl;
+                cout<<"passed the key test"<<endl;
                 double errorValue1 = errorMap[key1];
                 double xStart1 = 1173 + errorValue1 * 1332 - 100;
                 double yStart1 = 1332 + errorValue1 * 1173 - 200;
@@ -79,26 +101,26 @@
                         }
                     }
                 }
-                
-                TF2 *fitFunc1 = new TF2("fitFunc1", "[0]*exp(-0.5*((x-[1])/[2])^2 - 0.5*((y-[3])/[4])^2)", 
+
+                TF2 *fitFunc1 = new TF2("fitFunc1", "[0]*exp(-0.5*((x-[1])/[2])^2 - 0.5*((y-[3])/[4])^2)",
                                         xCoord1 - 15, xCoord1 + 15, yCoord1 - 15, yCoord1 + 15);
-                
-                double maxContent1 = hEE->GetBinContent(hEE->GetXaxis()->FindBin(xCoord1), 
-                                                      hEE->GetYaxis()->FindBin(yCoord1));
-                
+
+                double maxContent1 = hEE->GetBinContent(hEE->GetXaxis()->FindBin(xCoord1),
+                                                        hEE->GetYaxis()->FindBin(yCoord1));
+
                 fitFunc1->SetParameters(maxContent1, xCoord1, 2.5, yCoord1, 2.5);
                 // Set parameter bounds
-                fitFunc1->SetParLimits(0, 0.5*maxContent1, 2*maxContent1); // amplitude
-                fitFunc1->SetParLimits(1, xCoord1-5, xCoord1+5);  // mean x
-                fitFunc1->SetParLimits(2, 1.0, 5.0);              // sigma x
-                fitFunc1->SetParLimits(3, yCoord1-5, yCoord1+5);  // mean y
-                fitFunc1->SetParLimits(4, 1.0, 5.0);              // sigma y
-                
+                fitFunc1->SetParLimits(0, 0.5 * maxContent1, 2 * maxContent1); // amplitude
+                fitFunc1->SetParLimits(1, xCoord1 - 5, xCoord1 + 5);           // mean x
+                fitFunc1->SetParLimits(2, 1.0, 5.0);                           // sigma x
+                fitFunc1->SetParLimits(3, yCoord1 - 5, yCoord1 + 5);           // mean y
+                fitFunc1->SetParLimits(4, 1.0, 5.0);                           // sigma y
+
                 hEE->Fit(fitFunc1, "QR");
-                
+
                 double fitX1 = fitFunc1->GetParameter(1);
                 double fitY1 = fitFunc1->GetParameter(3);
-                cout<<"Fit X1: "<<fitX1<<" Fit Y1: "<<fitY1<<endl;
+                cout << "Fit X1: " << fitX1 << " Fit Y1: " << fitY1 << endl;
 
                 xCoord1 = fitX1;
                 yCoord1 = fitY1;
@@ -130,25 +152,25 @@
                     }
                 }
 
-                TF2 *fitFunc2 = new TF2("fitFunc2", "[0]*exp(-0.5*((x-[1])/[2])^2 - 0.5*((y-[3])/[4])^2)", 
+                TF2 *fitFunc2 = new TF2("fitFunc2", "[0]*exp(-0.5*((x-[1])/[2])^2 - 0.5*((y-[3])/[4])^2)",
                                         xCoord2 - 15, xCoord2 + 15, yCoord2 - 15, yCoord2 + 15);
-                
-                double maxContent2 = hEE->GetBinContent(hEE->GetXaxis()->FindBin(xCoord2), 
-                                                      hEE->GetYaxis()->FindBin(yCoord2));
-                
+
+                double maxContent2 = hEE->GetBinContent(hEE->GetXaxis()->FindBin(xCoord2),
+                                                        hEE->GetYaxis()->FindBin(yCoord2));
+
                 fitFunc2->SetParameters(maxContent2, xCoord2, 2.5, yCoord2, 2.5);
 
-                fitFunc2->SetParLimits(0, 0.5*maxContent2, 2*maxContent2); // amplitude
-                fitFunc2->SetParLimits(1, xCoord2-5, xCoord2+5);  // mean x
-                fitFunc2->SetParLimits(2, 1.0, 5.0);              // sigma x
-                fitFunc2->SetParLimits(3, yCoord2-5, yCoord2+5);  // mean y
-                fitFunc2->SetParLimits(4, 1.0, 5.0);              // sigma y
-                
+                fitFunc2->SetParLimits(0, 0.5 * maxContent2, 2 * maxContent2); // amplitude
+                fitFunc2->SetParLimits(1, xCoord2 - 5, xCoord2 + 5);           // mean x
+                fitFunc2->SetParLimits(2, 1.0, 5.0);                           // sigma x
+                fitFunc2->SetParLimits(3, yCoord2 - 5, yCoord2 + 5);           // mean y
+                fitFunc2->SetParLimits(4, 1.0, 5.0);                           // sigma y
+
                 hEE->Fit(fitFunc2, "QR");
-                
+
                 double fitX2 = fitFunc2->GetParameter(1);
                 double fitY2 = fitFunc2->GetParameter(3);
-                
+
                 xCoord2 = fitX2;
                 yCoord2 = fitY2;
 
@@ -177,7 +199,7 @@
                 TF1 *f1 = new TF1("f1", "[0]*x + [1]", 0, 1500);
                 adjustmentLine->Fit("f1", "Q");
 
-                //adjustmentLine->Draw("same");
+                // adjustmentLine->Draw("same");
                 double slope = f1->GetParameter(0);         // Slope
                 double intercept = f1->GetParameter(1);     // Intercept
                 double slopeError = f1->GetParError(0);     // Slope error
@@ -192,21 +214,23 @@
                 }
 
                 double delta_ij = 0;
-                for (int k = 0; k < nE; k++) {
-                    delta_ij += (fpar0[i][j][k]/Eg[k] + fpar1[i][j][k]); // First formula
+                for (int k = 0; k < nE; k++)
+                {
+                    delta_ij += (fpar0[i][j][k] / Eg[k] + fpar1[i][j][k]); // First formula
                 }
-                delta_ij = delta_ij/nE - 1.0;
+                delta_ij = delta_ij / nE - 1.0;
+                //resultFile << i << " " << j << " ";
+                resultFile << delta_ij << "\n";
 
-                resultFile<<delta_ij << "\n";
-                
                 // Calculate and write the reverse pair (j,i)
                 double delta_ji = 0;
-                for (int k = 0; k < nE; k++) {
-                    delta_ji += (1.0 - fpar0[i][j][k]/Eg[k])/fpar1[i][j][k];
+                for (int k = 0; k < nE; k++)
+                {
+                    delta_ji += (1.0 - fpar0[i][j][k] / Eg[k]) / fpar1[i][j][k];
                 }
-                delta_ji = delta_ji/nE - 1.0;
-
-                resultFile<< delta_ji << "\n";
+                delta_ji = delta_ji / nE - 1.0;
+                //resultFile << j << " " << i << " ";
+                resultFile << delta_ji << "\n";
 
                 TLatex *latex = new TLatex();
                 latex->SetTextSize(0.025);
